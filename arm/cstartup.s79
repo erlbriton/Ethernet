@@ -1,0 +1,121 @@
+;/*****************************************************************************
+;*   startup.s: startup file for NXP LPC230x Family Microprocessors
+;*
+;*   Copyright(C) 2006, NXP Semiconductor
+;*   All rights reserved.
+;*
+;*   History
+;*   2006.09.01  ver 1.00    Prelimnary version, first Release
+;*****************************************************************************/
+
+;/*
+; *  REMAP: when set the startup code initializes the register MEMMAP
+; *  which overwrites the settings of the CPU configuration pins. The
+; *  startup and interrupt vectors are remapped from:
+; *     0x00000000  default setting (not remapped)
+; *     0x40000000  when RAM_MODE is used
+; *
+; *  RAM_MODE: when set the device is configured for code execution
+; *  from on-chip RAM starting at address 0x40000000.
+; */
+
+; Standard definitions of Mode bits and Interrupt (I & F) flags in PSRs
+
+Mode_USR        DEFINE  0x10
+Mode_FIQ        DEFINE  0x11
+Mode_IRQ        DEFINE  0x12
+Mode_SVC        DEFINE  0x13
+Mode_ABT        DEFINE  0x17
+Mode_UND        DEFINE  0x1B
+Mode_SYS        DEFINE  0x1F
+
+I_Bit           DEFINE  0x80            ; when I bit is set, IRQ is disabled
+F_Bit           DEFINE  0x40            ; when F bit is set, FIQ is disabled
+
+; Exception Vectors
+; Mapped to Address 0.
+; Absolute addressing mode must be used.
+; Dummy Handlers are implemented as infinite loops which can be modified.
+
+        PROGRAM ?RESET
+        COMMON  INTVEC:CODE(3)
+        PUBLIC  __program_start
+        EXTERN  Reset_Handler, Undef_Handler, SWI_Handler, PAbt_Handler, DAbt_Handler, FIQ_Handler
+        EXTERN  VICADDRESS
+        CODE32  ; Always ARM mode after reset
+
+__program_start
+    org 0x00
+        LDR     PC, =Reset_Handler
+    org 0x04
+        LDR     PC, =Undef_Handler
+    org 0x08
+        LDR     PC, =SWI_Handler
+    org 0x0C
+        LDR     PC, =PAbt_Handler
+    org 0x10
+        LDR     PC, =DAbt_Handler
+    org 0x18
+        LDR     PC, VICADDRESS ;[PC,#-0xFF0] ;[PC, #-0x0120]  ; Vector from VicVectAddr
+    org 0x1C
+        LDR     PC, =FIQ_Handler
+
+        LTORG
+        ENDMOD
+
+; Reset Handler
+
+        MODULE  ?CSTARTUP
+        RSEG  IRQ_STACK:DATA(3)
+        RSEG  FIQ_STACK:DATA(3)
+        RSEG  SVC_STACK:DATA(3)
+        RSEG  ABT_STACK:DATA(3)
+        RSEG  UND_STACK:DATA(3)
+        RSEG  CSTACK:DATA(3)
+        RSEG  ICODE:CODE(3)
+        PUBLIC  Reset_Handler, Undef_Handler, SWI_Handler, PAbt_Handler, DAbt_Handler, FIQ_Handler
+        EXTERN  ?main
+        CODE32
+
+Reset_Handler
+
+;  Enter Undefined Instruction Mode and set its Stack Pointer
+        MSR     CPSR_c, #Mode_UND|I_Bit|F_Bit
+        LDR     SP, =SFE(UND_STACK)&0xFFFFFFF8
+
+;  Enter Abort Mode and set its Stack Pointer
+        MSR     CPSR_c, #Mode_ABT|I_Bit|F_Bit
+        LDR     SP, =SFE(ABT_STACK)&0xFFFFFFF8
+
+;  Enter FIQ Mode and set its Stack Pointer
+        MSR     CPSR_c, #Mode_FIQ|I_Bit|F_Bit
+        LDR     SP, =SFE(FIQ_STACK)&0xFFFFFFF8
+
+;  Enter IRQ Mode and set its Stack Pointer
+        MSR     CPSR_c, #Mode_IRQ|I_Bit|F_Bit
+        LDR     SP, =SFE(IRQ_STACK)&0xFFFFFFF8
+
+;  Enter Supervisor Mode and set its Stack Pointer
+        MSR     CPSR_c, #Mode_SVC|I_Bit|F_Bit
+        LDR     SP, =SFE(SVC_STACK)&0xFFFFFFF8
+
+;  Enter User Mode and set its Stack Pointer
+        MSR     CPSR_c, #Mode_USR
+        LDR     SP, =SFE(CSTACK)&0xFFFFFFF8
+
+; Enter the C code
+
+        LDR     R0, =?main
+        BX      R0
+        B       .
+
+Undef_Handler
+SWI_Handler
+PAbt_Handler
+DAbt_Handler
+FIQ_Handler
+        B       .
+
+        LTORG
+        ENDMOD
+        END

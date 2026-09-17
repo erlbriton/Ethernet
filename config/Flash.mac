@@ -1,0 +1,4 @@
+execUserReset()
+{
+    __writeMemory32(0x00000001, 0xE01FC040, "Memory"); // MEMMAP = 1;
+}

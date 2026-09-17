@@ -1,0 +1,15 @@
+# IAR: артефакты сборки и служебные папки
+Output/
+settings/
+BrowseInfo/
+*.o
+*.obj
+*.pbi
+*.pbd
+*.dep
+*.map
+*.bin
+*.hex
+*.ewd
+# исключение для эталонных прошивок
+!release/*.hex
