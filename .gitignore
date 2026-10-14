@@ -13,3 +13,13 @@ BrowseInfo/
 *.ewd
 # исключение для эталонных прошивок
 !release/*.hex
+# Build output
+Release/
+
+# IAR backup-файлы
+Backup (4) of *
+
+# Build-артефакты, если вдруг окажутся где-то ещё
+*.pbw
+*.out
+*.ninja_log
