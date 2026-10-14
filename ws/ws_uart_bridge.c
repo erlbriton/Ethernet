@@ -22,6 +22,8 @@
 #include "includes.h"
 #include "mbtypes.h"
 #include "ramdata.h"
+#include "lnkmngr.h"
+#include "lnkmngr_u3.h"
 #include "uip.h"
 #include <string.h>
 
@@ -92,10 +94,37 @@ static void ws_modbus_exec(const u8 *payload, u16 len)
   UartState = UARTBUSY;
   tcpbrdata.Idx = len;
   memcpy(&tcpbrdata.Buffer[0], payload, len);
+
+  tcpbrdata.TXCount = 0; // сброс перед новой командой: 0 = «ответа ещё нет»
+
   if (command_decode(&tcpbrdata)) {
     /* ответ RTU (с CRC) уезжает клиенту бинарным кадром */
     ws_send_opcode(WS_OP_BINARY, &tcpbrdata.Buffer[0], tcpbrdata.TXCount);
   }
+  else {
+    /* Возможно, запущена ретрансляция (команда 0x11):
+       ModbusDataRetranslate выставил WaitRespond=1 и активировал слот.
+       Ждём ответа от DExS, удерживая WebSocket-сессию открытой. */
+    volatile TLnkSlotStat *vs = &lnks3_RTR_DEXS.Status;
+    volatile u8 *vtx = &tcpbrdata.TXCount;
+
+    if (vs->bits.WaitRespond) {
+      u32 wait = 30000000;
+      while (vs->bits.WaitRespond && wait > 0) {
+        wait--;
+      }
+      if (*vtx > 0) {
+        /* Ответ от DExS получен — отправляем клиенту бинарным кадром */
+        ws_send_opcode(WS_OP_BINARY, &tcpbrdata.Buffer[0], tcpbrdata.TXCount);
+      } else {
+        /* Таймаут — сбрасываем флаг и отпускаем UART */
+        vs->bits.WaitRespond = 0;
+      }
+    }
+    /* Если WaitRespond не был выставлен — команда просто не опознана,
+       ничего не отправляем (как и раньше). */
+  }
+
   UartState = UARTIDLE;
 }
 
