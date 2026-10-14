@@ -109,7 +109,7 @@ static void ws_modbus_exec(const u8 *payload, u16 len)
     volatile u8 *vtx = &tcpbrdata.TXCount;
 
     if (vs->bits.WaitRespond) {
-      u32 wait = 30000000;
+      u32 wait = WAIT_FOR_REPLY_LOOPS;
       while (vs->bits.WaitRespond && wait > 0) {
         wait--;
       }

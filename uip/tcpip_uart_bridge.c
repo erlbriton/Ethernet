@@ -76,7 +76,8 @@ printf("new data detected! state = %d\r\n",s->state);
         volatile TLnkSlotStat *vs = &lnks3_RTR_DEXS.Status;
         volatile u8 *vtx = &tcpbrdata.TXCount;
         if (vs->bits.WaitRespond) {
-          u32 wait = 30000000;
+        u32 wait = WAIT_FOR_REPLY_LOOPS;
+
           while (vs->bits.WaitRespond && wait > 0) {
             wait--;
           }
@@ -141,7 +142,7 @@ Int32U index;
           volatile u8 *vtx = &tcpbrdata.TXCount;
 
           if (vs->bits.WaitRespond) {
-            u32 wait = 30000000;
+            u32 wait = WAIT_FOR_REPLY_LOOPS;
             while (vs->bits.WaitRespond && wait > 0) {
               wait--;
             }
