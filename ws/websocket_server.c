@@ -68,12 +68,12 @@ ws_handshake_result_t ws_build_handshake_response(const u8 *req, u16 req_len,
   /* заголовки ещё не пришли целиком - ждём пустую строку \r\n\r\n */
   if (!ci_memmem(req, req_len, "\r\n\r\n")) return WS_HS_INCOMPLETE;
 
-  /* первая строка обязана начинаться с "GET " */
-  if (req_len < 4 || req[0] != 'G' || req[1] != 'E' || req[2] != 'T' || req[3] != ' ')
-    return WS_HS_REJECT;
+  /* Ищем GET. Разрешаем смещение, если в начале буфера остался мусор от прошлого сокета */
+  if (!ci_memmem(req, req_len, "GET ")) return WS_HS_REJECT;
 
-  /* это должен быть именно WebSocket-upgrade */
-  if (!ci_memmem(req, req_len, "upgrade: websocket")) return WS_HS_REJECT;
+  /* Ищем Upgrade и websocket раздельно, чтобы не зависеть от количества пробелов */
+  if (!ci_memmem(req, req_len, "upgrade:")) return WS_HS_REJECT;
+  if (!ci_memmem(req, req_len, "websocket")) return WS_HS_REJECT;
 
   /* извлекаем значение Sec-WebSocket-Key */
   keyp = ci_memmem(req, req_len, "sec-websocket-key:");

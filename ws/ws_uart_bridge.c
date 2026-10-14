@@ -28,8 +28,8 @@
 extern Int32U UartState;    /* определён в tcpip_uart_bridge.c */
 extern TClient tcpbrdata;   /* определён в tcpip_uart_bridge.c */
 
-#define WS_RX_SIZE  512                    /* накопитель потока: рукопожатие + кадры */
-#define WS_TX_SIZE  (WS_MAX_PAYLOAD + 16)  /* запас под заголовок кадра WS */
+#define WS_RX_SIZE  1200                    /* накопитель потока: рукопожатие + кадры */
+#define WS_TX_SIZE  300//(WS_MAX_PAYLOAD + 16)  /* запас под заголовок кадра WS */
 
 #define WS_ST_FREE       0
 #define WS_ST_HANDSHAKE  1

@@ -126,6 +126,11 @@ bool ModbusDataRetranslate(TLnkSlot *pLnkSlot, TClient *pC, bool NeedRespond){
   pLnkSlot->pC = pC;//сообщу какой интерфейс активировал слот
   pLnkSlot->Status.bits.WaitRespond = NeedRespond;//требуется ли ответ на ретранслированную команду
   pC->Status.bits.PacketTransmited = NeedRespond;
+  printf("RTR: called, WaitRespond=%d, OutCnt=%d\r\n", NeedRespond, pLnkSlot->OutCnt);
+  printf("RTR: _lnk3_slot_idx=%d, RTR.Skip=%d, RTR.change=%d\r\n",
+       _lnk3_slot_idx,
+       lnks3_RTR_DEXS.Status.bits.Skip,
+       lnks3_RTR_DEXS.Status.bits.change);
   return (FALSE);//ответа не требуется
 }
 

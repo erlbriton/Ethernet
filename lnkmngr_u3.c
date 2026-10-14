@@ -162,7 +162,7 @@ __irq __nested __arm  void TIMER3_ISR(void) {
   TLnkSlot *pSlot;
   pSlot  = pLnk3Slots[_lnk3_slot_idx];//при входе получаю ссылку на действующий слот
 
-  if (pSlot->Status.bits.change) {
+    if (pSlot->Status.bits.change) {
     pSlot->Status.bits.change = 0;
     //нужно сделать активным следующий слот
     _lnk3_slot_idx++;
@@ -188,6 +188,9 @@ __irq __nested __arm  void TIMER3_ISR(void) {
     //FIO0SET |= UART2DIR;//DIR = 1 включу драйвер на передачу //07.12.10 ???
     U3IER;//почистить отложенные прерывания
     U3IER = 0x02;// разрешить прерывания передатчикa, блокировать приёмник
+    if (pSlot == &lnks3_RTR_DEXS) {
+        printf(">>> RTR START TX, OutCnt=%d\r\n", pSlot->OutCnt);
+    }
     U3THR = pSlot->OutBuf[pSlot->_Cnt++];//
     goto Exit;
   }
@@ -320,6 +323,7 @@ void lnks3_FLASH_READ_END (void){//получены данные FLASH
 void lnks3_RTR_DEXS_END (void){//ретрансляция пакета завершена, и на него даже получен ответ!
   
  // printf("lnks3_RTR_DEXS_END \r\n");
+    printf("RTR_END: called\r\n");
 
 
   bauint w;
@@ -327,6 +331,12 @@ void lnks3_RTR_DEXS_END (void){//ретрансляция пакета завершена, и на него даже п
   //проверка поступивших данных
   lnks3_RTR_DEXS.Status.bits.CRC_Error = (GetCRC16_WaitZero(&lnks3_RTR_DEXS.InBuf[0], lnks3_RTR_DEXS.InptCnt) != 0);
   //от DexS должно прийти подтверждение записи данных
+  printf("RTR_END: ErrTimeOut=%d, CRC_Error=%d, InptCnt=%d, InBuf[0..3]=%02X %02X %02X %02X\r\n",
+       lnks3_RTR_DEXS.Status.bits.ErrTimeOut,
+       lnks3_RTR_DEXS.Status.bits.CRC_Error,
+       lnks3_RTR_DEXS.InptCnt,
+       lnks3_RTR_DEXS.InBuf[0], lnks3_RTR_DEXS.InBuf[1],
+       lnks3_RTR_DEXS.InBuf[2], lnks3_RTR_DEXS.InBuf[3]);
   if ((lnks3_RTR_DEXS.Status.bits.ErrTimeOut) || (lnks3_RTR_DEXS.Status.bits.CRC_Error)) {
     //если пакет принят сбойный, или был тай аут то
     //перезапускаю слот на повторно выполнение перевыполнение, но не более 3-х попыток

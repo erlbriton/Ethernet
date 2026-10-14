@@ -8,9 +8,12 @@
 #include "includes.h"
 #include "mbtypes.h"
 #include "ramdata.h"
+#include "lnkmngr.h"
+#include "lnkmngr_u3.h"
 #include "uip.h"//!!!
 #include <string.h>
 #include <stdio.h>
+
 TClient tcpbrdata;
 void tcpbrCallBack(void);
 
@@ -49,6 +52,9 @@ printf("new data detected! state = %d\r\n",s->state);
       // положили пакет в буфер интерфейса (длину пакета кладем в поле Idx)
       index = tcpbrdata.Idx = s->len;
       memmove(&tcpbrdata.Buffer[0], &s->buffer[0], index);
+
+      tcpbrdata.TXCount = 0; // сброс перед новой командой: 0 = Ђответа ещЄ нетї
+
       // запускаем работу хаба
       //08.11.13
       //tcpbrdata.Status.bits.Retranslate = 0;
@@ -63,23 +69,40 @@ printf("new data detected! state = %d\r\n",s->state);
         UartState = UARTIDLE;             // освободили uart
         uip_send(&s->buffer[0], s->len);  // это должно заложить ответ в нужное место
       }
-      else {  // если команда не опознана - освобождаем приложение
-        //а вдруг она ждЄт ретрансл€ции
-/*        if (tcpbrdata.Status.bits.Retranslate) {
-          //действительно ждЄт ретрансл€ции
-          TimeOut = 68300000;
-          while (tcpbrdata.Status.bits.Retranslate){
-            //на предмет зависа ограничиваем врем€ в цикле
-//            LPC[1] = TimeOut;
-            TimeOut--;
-            if (TimeOut == 0) {goto _time_out_;};
-          };
-            //дождались!
-            goto _retranslate_;
+      else {  // command_decode вернул FALSE
+        // ¬озможно, запущена ретрансл€ци€ (команда 0x11):
+        // ModbusDataRetranslate выставил WaitRespond=1 и активировал слот.
+        // ∆дЄм ответа от DExS, удержива€ соединение открытым.
+        volatile TLnkSlotStat *vs = &lnks3_RTR_DEXS.Status;
+        volatile u8 *vtx = &tcpbrdata.TXCount;
+
+        printf("NEWDATA: else entered. WaitRespond=%d, TXCount=%d\r\n",
+               (int)vs->bits.WaitRespond, (int)*vtx);
+
+        if (vs->bits.WaitRespond) {
+          u32 wait = 30000000;
+          while (vs->bits.WaitRespond && wait > 0) {
+            wait--;
+          }
+          printf("NEWDATA: wait done. WaitRespond=%d, TXCount=%d, wait_left=%lu\r\n",
+                 (int)vs->bits.WaitRespond, (int)*vtx, (unsigned long)wait);
+          if (*vtx > 0) {
+            // ќтвет от DExS получен Ч отправл€ем клиенту
+            index = s->len = tcpbrdata.TXCount;
+            memmove(&s->buffer[0], &tcpbrdata.Buffer[0], index);
+            UartState = UARTIDLE;
+            uip_send(&s->buffer[0], s->len);
+          } else {
+            // “аймаут Ч сбрасываем и отпускаем соединение
+            vs->bits.WaitRespond = 0;
+            s->state = IDLE_STATE;
+            UartState = UARTIDLE;
+          }
+        } else {
+          // Ќе ретрансл€ци€ Ч команда не опознана
+          s->state = IDLE_STATE;
+          UartState = UARTIDLE;
         }
-        _time_out_:*/
-        s->state = IDLE_STATE;
-        UartState = UARTIDLE; // освободили uart
       }
     }
     else {  // uart зан€т
@@ -103,6 +126,9 @@ Int32U index;
         // положили пакет в буфер интерфейса (длину пакета кладем в поле Idx)
         index = tcpbrdata.Idx = s->len;
         memmove(&tcpbrdata.Buffer[0], &s->buffer[0], index);
+
+        tcpbrdata.TXCount = 0; // сброс перед новой командой: 0 = Ђответа ещЄ нетї
+
         // запускаем работу хаба
         if (command_decode(&tcpbrdata)) { // значит хаб отработал успешно
           // в буфере интерфейса теперь лежит ответ (длина пакета в поле TXCount)
@@ -113,9 +139,41 @@ Int32U index;
           UartState = UARTIDLE;             // освободили uart
           uip_send(&s->buffer[0], s->len);  // это должно заложить ответ в нужное место
         }
-        else {  // если команда не опознана - освобождаем приложение
-          s->state = IDLE_STATE;
-          UartState = UARTIDLE; // освободили uart
+        else {  // command_decode вернул FALSE
+          // ¬озможно, запущена ретрансл€ци€ (команда 0x11):
+          // ModbusDataRetranslate выставил WaitRespond=1 и активировал слот.
+          // ∆дЄм ответа от DExS, удержива€ соединение открытым.
+          volatile TLnkSlotStat *vs = &lnks3_RTR_DEXS.Status;
+          volatile u8 *vtx = &tcpbrdata.TXCount;
+
+          printf("HANDLE: else entered. WaitRespond=%d, TXCount=%d\r\n",
+                 (int)vs->bits.WaitRespond, (int)*vtx);
+
+          if (vs->bits.WaitRespond) {
+            u32 wait = 30000000;
+            while (vs->bits.WaitRespond && wait > 0) {
+              wait--;
+            }
+            printf("HANDLE: wait done. WaitRespond=%d, TXCount=%d, wait_left=%lu\r\n",
+                   (int)vs->bits.WaitRespond, (int)*vtx, (unsigned long)wait);
+            if (*vtx > 0) {
+              // ќтвет от DExS получен Ч отправл€ем клиенту
+              index = s->len = tcpbrdata.TXCount;
+              memmove(&s->buffer[0], &tcpbrdata.Buffer[0], index);
+              s->state = RESPONDED_STATE;
+              UartState = UARTIDLE;
+              uip_send(&s->buffer[0], s->len);
+            } else {
+              // “аймаут Ч сбрасываем и отпускаем соединение
+              vs->bits.WaitRespond = 0;
+              s->state = IDLE_STATE;
+              UartState = UARTIDLE;
+            }
+          } else {
+            // Ќе ретрансл€ци€ Ч команда не опознана
+            s->state = IDLE_STATE;
+            UartState = UARTIDLE;
+          }
         }
       }
       break;
