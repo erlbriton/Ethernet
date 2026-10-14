@@ -50,7 +50,7 @@ void Lnk3ReInit()
   //дл€ –јћки
   if(DEXS_RAM_SIZE > MAX_REG_SIZE) lnks3_RAM_READ.OutBuf[5] = MAX_REG_SIZE;//см коммент ниже
   else lnks3_RAM_READ.OutBuf[5] = (u8)DEXS_RAM_SIZE;
-  //printf("DEXS SIZE %d", lnks3_RAM_READ.OutBuf[5]);
+
   //теперь считаем  — отправл€емого пакета
   crc.i = GetCRC16(&lnks3_RAM_READ.OutBuf[0], 6);
   lnks3_RAM_READ.OutBuf[6]=crc.b[1];//high byte CRC
@@ -80,7 +80,6 @@ void Lnk3ReInit()
   lnks3_RTR_DEXS.OutBuf[7]=crc.b[0];//low byte CRC
   
   
-  //printf("RAM_outbuf size = %i \r\nFLASH_outbuf size = %i\r\n",lnks3_RAM_READ.OutBuf[5], lnks3_FLASH_READ.OutBuf[5]);
 }
 void Lnk3SetTimer (unsigned int Delay){
   T3TCR = 0;//TIMER3 STOP;
@@ -189,7 +188,6 @@ __irq __nested __arm  void TIMER3_ISR(void) {
     U3IER;//почистить отложенные прерывани€
     U3IER = 0x02;// разрешить прерывани€ передатчикa, блокировать приЄмник
     if (pSlot == &lnks3_RTR_DEXS) {
-        printf(">>> RTR START TX, OutCnt=%d\r\n", pSlot->OutCnt);
     }
     U3THR = pSlot->OutBuf[pSlot->_Cnt++];//
     goto Exit;
@@ -321,22 +319,11 @@ void lnks3_FLASH_READ_END (void){//получены данные FLASH
 
 
 void lnks3_RTR_DEXS_END (void){//ретрансл€ци€ пакета завершена, и на него даже получен ответ!
-  
- // printf("lnks3_RTR_DEXS_END \r\n");
-    printf("RTR_END: called\r\n");
-
-
   bauint w;
   static u8 TryCnt = 0;
   //проверка поступивших данных
   lnks3_RTR_DEXS.Status.bits.CRC_Error = (GetCRC16_WaitZero(&lnks3_RTR_DEXS.InBuf[0], lnks3_RTR_DEXS.InptCnt) != 0);
   //от DexS должно прийти подтверждение записи данных
-  printf("RTR_END: ErrTimeOut=%d, CRC_Error=%d, InptCnt=%d, InBuf[0..3]=%02X %02X %02X %02X\r\n",
-       lnks3_RTR_DEXS.Status.bits.ErrTimeOut,
-       lnks3_RTR_DEXS.Status.bits.CRC_Error,
-       lnks3_RTR_DEXS.InptCnt,
-       lnks3_RTR_DEXS.InBuf[0], lnks3_RTR_DEXS.InBuf[1],
-       lnks3_RTR_DEXS.InBuf[2], lnks3_RTR_DEXS.InBuf[3]);
   if ((lnks3_RTR_DEXS.Status.bits.ErrTimeOut) || (lnks3_RTR_DEXS.Status.bits.CRC_Error)) {
     //если пакет прин€т сбойный, или был тай аут то
     //перезапускаю слот на повторно выполнение перевыполнение, но не более 3-х попыток

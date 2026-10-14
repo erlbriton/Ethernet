@@ -75,17 +75,11 @@ printf("new data detected! state = %d\r\n",s->state);
         // ∆дЄм ответа от DExS, удержива€ соединение открытым.
         volatile TLnkSlotStat *vs = &lnks3_RTR_DEXS.Status;
         volatile u8 *vtx = &tcpbrdata.TXCount;
-
-        printf("NEWDATA: else entered. WaitRespond=%d, TXCount=%d\r\n",
-               (int)vs->bits.WaitRespond, (int)*vtx);
-
         if (vs->bits.WaitRespond) {
           u32 wait = 30000000;
           while (vs->bits.WaitRespond && wait > 0) {
             wait--;
           }
-          printf("NEWDATA: wait done. WaitRespond=%d, TXCount=%d, wait_left=%lu\r\n",
-                 (int)vs->bits.WaitRespond, (int)*vtx, (unsigned long)wait);
           if (*vtx > 0) {
             // ќтвет от DExS получен Ч отправл€ем клиенту
             index = s->len = tcpbrdata.TXCount;
@@ -146,16 +140,11 @@ Int32U index;
           volatile TLnkSlotStat *vs = &lnks3_RTR_DEXS.Status;
           volatile u8 *vtx = &tcpbrdata.TXCount;
 
-          printf("HANDLE: else entered. WaitRespond=%d, TXCount=%d\r\n",
-                 (int)vs->bits.WaitRespond, (int)*vtx);
-
           if (vs->bits.WaitRespond) {
             u32 wait = 30000000;
             while (vs->bits.WaitRespond && wait > 0) {
               wait--;
             }
-            printf("HANDLE: wait done. WaitRespond=%d, TXCount=%d, wait_left=%lu\r\n",
-                   (int)vs->bits.WaitRespond, (int)*vtx, (unsigned long)wait);
             if (*vtx > 0) {
               // ќтвет от DExS получен Ч отправл€ем клиенту
               index = s->len = tcpbrdata.TXCount;
