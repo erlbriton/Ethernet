@@ -9,12 +9,13 @@ BrowseInfo/
 *.dep
 *.map
 *.bin
-*.hex
 *.ewd
-# исключение для эталонных прошивок
-!release/*.hex
-# Build output
-Release/
+
+# Build output — игнорировать всё внутри Release, но разрешить заходить в Release/Exe
+Release/*
+!Release/Exe/
+Release/Exe/*
+!Release/Exe/*.hex
 
 # IAR backup-файлы
 Backup (4) of *
